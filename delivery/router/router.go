@@ -1,9 +1,13 @@
 package router
 
 import (
+	loancontroller "loan_tracker/delivery/controllers/loan_controller"
+	// "loan_tracker/delivery/controllers/log_controller"
 	usercontroller "loan_tracker/delivery/controllers/user_controller"
 	"loan_tracker/delivery/middleware"
-	"loan_tracker/repository/userrepository"
+	"loan_tracker/repository"
+	loanusecase "loan_tracker/usecase/loan_usecase"
+	// logusecase "loan_tracker/usecase/log_usecase"
 	userusecase "loan_tracker/usecase/user_usecase"
 
 	"github.com/gin-gonic/gin"
@@ -11,13 +15,30 @@ import (
 )
 
 
+
 func getUserController(db *mongo.Database) *usercontroller.UserController {
-	UserRepository := userrepository.NewUserRepository(db)
+	UserRepository := repository.NewUserRepository(db)
 	UserUsecase := userusecase.NewUserUsecase(UserRepository)
 	UserController := usercontroller.NewUserController(UserUsecase)
-	return UserController
-	
+	return UserController	
 }
+
+func getLoanController(db *mongo.Database) *loancontroller.LoanController {
+	LoanRepository := repository.NewLoanRepository(db)
+	UserRepository := repository.NewUserRepository(db)
+	LoanUsecase := loanusecase.NewLoanUsecase(LoanRepository)
+	UserUsecase := userusecase.NewUserUsecase(UserRepository)
+	LoanController := loancontroller.NewLoanController(LoanUsecase, UserUsecase)
+	return LoanController
+}
+
+// func getLogController(db *mongo.Database) *log_controller.LogController {
+// 	LogRepository := repository.NewLogRepository(db)
+// 	LogUsecase := logusecase.NewLogUsecase(LogRepository)
+// 	UserUsecase := userusecase.NewUserUsecase(repository.NewUserRepository(db))
+// 	LogController := log_controller.NewLogController(LogUsecase, UserUsecase)
+// 	return LogController
+// }
 
 func publicRouter(router *gin.Engine, userController *usercontroller.UserController) {
 	router.POST("/register", userController.RegisterUser)
@@ -39,6 +60,13 @@ func protectedRouter(router *gin.Engine, userController *usercontroller.UserCont
 	)
 }
 
+func privateLoanRouter(router *gin.Engine, loanController *loancontroller.LoanController) {
+	router.POST("/loans", middleware.AuthMiddleware("access"), loanController.ApplyLoan)
+	router.GET("/admin/loans", middleware.AuthMiddleware("access"), loanController.GetAllLoans)
+	router.GET("/myloans", middleware.AuthMiddleware("access"), loanController.GetMyLoans)
+	router.PATCH("/admin/approve/:id", middleware.AuthMiddleware("access"), loanController.ApproveLoan)
+}
+
 
 
 
@@ -56,6 +84,9 @@ func SetupRouter(client *mongo.Client) *gin.Engine {
 
 	//create private routes
 	privateRouter(router, UserController)
+
+	//create private routes for loans
+	privateLoanRouter(router, getLoanController(db))
 
 
 

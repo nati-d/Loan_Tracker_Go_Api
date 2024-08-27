@@ -1,8 +1,9 @@
 package usercontroller
 
 import (
-	"net/http"
 	"loan_tracker/domain"
+	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,6 +37,8 @@ func (uc *UserController) RegisterUser(ctx *gin.Context) {
 
 	// Set default role for the user
 	user.Role = "user"
+
+	user.JoinedAt = time.Now()
 
 	// Create user through usecase
 	if err := uc.UserUsecase.RegisterUser(&user); err != nil {
